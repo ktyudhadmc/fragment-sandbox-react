@@ -4,12 +4,14 @@ function App() {
   return (
     <>
       <div style={{ padding: 24, display: "flex", gap: 12 }}>
-        <Button variant="primary">Primary</Button>
-        <Button variant="danger" size="sm">
-          Danger
-        </Button>
-        <Button variant="outline" disabled>
-          Outline Disabled
+        <Button
+          // variant="primary"
+          css={{
+            px: { base: "4", md: "96" },
+            rounded: { base: "md", lg: "lg" },
+          }}
+        >
+          Primary
         </Button>
       </div>
     </>
