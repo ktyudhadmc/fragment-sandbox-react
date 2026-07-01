@@ -7,7 +7,11 @@ import { resolve } from "path";
 export default defineConfig({
   plugins: [
     react(),
-    dts({ include: ["src"], exclude: ["src/App.tsx", "src/main.tsx"] }),
+    dts({
+      tsconfigPath: "tsconfig.app.json",
+      include: ["src"],
+      exclude: ["src/App.tsx", "src/main.tsx"],
+    }),
   ],
   build: {
     lib: {
