@@ -4,9 +4,20 @@ import { Avatar } from "../../components/Avatar";
 import { Tag } from "../../components/Tag";
 import { Text } from "../../components/Text";
 import { Divider } from "../../components/Divider";
-import { Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow } from "../../components/Table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableCheckboxCell,
+  TableCheckboxHeadCell,
+  TableHead,
+  TableHeadCell,
+  TableRow,
+} from "../../components/Table";
 import { Chart } from "../../components/Chart";
 import { ScrollArea } from "../../components/ScrollArea";
+import { Pagination } from "../../components/Pagination";
+import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { css } from "../../../styled-system/css";
 
 const PEOPLE = [
@@ -15,8 +26,49 @@ const PEOPLE = [
   { name: "Alan Turing", role: "Researcher" },
 ];
 
+const SELECTABLE_ROWS = [
+  { id: 1, name: "Ada Lovelace", role: "Engineer" },
+  { id: 2, name: "Grace Hopper", role: "Engineer" },
+  { id: 3, name: "Alan Turing", role: "Researcher" },
+];
+
+function SelectableTableDemo() {
+  const bulk = useBulkSelect<number>();
+  const ids = SELECTABLE_ROWS.map((r) => r.id);
+
+  return (
+    <Table hoverable>
+      <TableHead>
+        <TableRow isHeader>
+          <TableCheckboxHeadCell
+            checked={bulk.isAllSelected(ids)}
+            indeterminate={bulk.selectedIds.length > 0 && !bulk.isAllSelected(ids)}
+            onChange={() => bulk.toggleAll(ids)}
+          />
+          <TableHeadCell>Name</TableHeadCell>
+          <TableHeadCell>Role</TableHeadCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {SELECTABLE_ROWS.map((row) => (
+          <TableRow key={row.id} selected={bulk.isSelected(row.id)}>
+            <TableCheckboxCell
+              checked={bulk.isSelected(row.id)}
+              onChange={() => bulk.toggleOne(row.id)}
+            />
+            <TableCell>{row.name}</TableCell>
+            <TableCell>{row.role}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 export function DataDisplaySections() {
   const [tags, setTags] = useState(["react", "panda-css", "design-system"]);
+  const [paginationPage, setPaginationPage] = useState(3);
+  const [paginationPageSize, setPaginationPageSize] = useState(10);
 
   return (
     <>
@@ -97,6 +149,7 @@ export function DataDisplaySections() {
       <CatalogSection
         id="table"
         title="Table"
+        description="Pair with useBulkSelect for built-in row selection — TableCheckboxCell/TableCheckboxHeadCell render the checkboxes and TableRow's selected prop highlights the row."
         usage={`import { Table, TableHead, TableBody, TableRow, TableHeadCell, TableCell } from "@ktyudhadmc/fragment";
 
 <Table hoverable>
@@ -110,15 +163,45 @@ export function DataDisplaySections() {
       <TableCell>Ada Lovelace</TableCell>
     </TableRow>
   </TableBody>
+</Table>
+
+// with row selection, powered by useBulkSelect
+import { useBulkSelect, Table, TableHead, TableBody, TableRow, TableHeadCell, TableCell, TableCheckboxHeadCell, TableCheckboxCell } from "@ktyudhadmc/fragment";
+
+const bulk = useBulkSelect<number>();
+const ids = rows.map((r) => r.id);
+
+<Table hoverable>
+  <TableHead>
+    <TableRow isHeader>
+      <TableCheckboxHeadCell
+        checked={bulk.isAllSelected(ids)}
+        indeterminate={bulk.selectedIds.length > 0 && !bulk.isAllSelected(ids)}
+        onChange={() => bulk.toggleAll(ids)}
+      />
+      <TableHeadCell>Name</TableHeadCell>
+    </TableRow>
+  </TableHead>
+  <TableBody>
+    {rows.map((row) => (
+      <TableRow key={row.id} selected={bulk.isSelected(row.id)}>
+        <TableCheckboxCell checked={bulk.isSelected(row.id)} onChange={() => bulk.toggleOne(row.id)} />
+        <TableCell>{row.name}</TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
 </Table>`}
         props={[
           { name: "hoverable", type: "boolean", default: "true", description: "Highlights rows on hover." },
           { name: "bordered", type: "boolean", default: "false", description: "Adds a border around every cell." },
           { name: "narrow", type: "boolean", default: "false", description: "Reduces cell vertical padding." },
           { name: "TableRow.isHeader", type: "boolean", default: "false", description: "Applies the header row background — set on the row inside TableHead." },
+          { name: "TableRow.selected", type: "boolean", default: "false", description: "Highlights the row (e.g. bulk.isSelected(row.id))." },
+          { name: "TableCheckboxHeadCell.checked / indeterminate / onChange", type: "boolean / boolean / () => void", description: "\"Select all\" header checkbox — wire directly to useBulkSelect." },
+          { name: "TableCheckboxCell.checked / onChange", type: "boolean / () => void", description: "Per-row checkbox — wire directly to useBulkSelect." },
         ]}
       >
-        <CatalogExample>
+        <CatalogExample label="Basic">
           <Table hoverable>
             <TableHead>
               <TableRow isHeader>
@@ -135,6 +218,43 @@ export function DataDisplaySections() {
               ))}
             </TableBody>
           </Table>
+        </CatalogExample>
+        <CatalogExample label="With row selection (useBulkSelect)">
+          <SelectableTableDemo />
+        </CatalogExample>
+      </CatalogSection>
+
+      <CatalogSection
+        id="pagination"
+        title="Pagination"
+        description="Page-number list with ellipsis, prev/next, and an optional page-size selector — typically placed under a Table."
+        usage={`import { Pagination } from "@ktyudhadmc/fragment";
+
+<Pagination
+  page={page}
+  pageSize={pageSize}
+  total={total}
+  onPageChange={setPage}
+  onPageSizeChange={setPageSize}
+/>`}
+        props={[
+          { name: "page", type: "number", description: "Current page, 1-indexed. Required." },
+          { name: "pageSize", type: "number", description: "Rows per page. Required." },
+          { name: "total", type: "number", description: "Total row count across all pages. Required." },
+          { name: "onPageChange", type: "(page: number) => void", description: "Called when a page number, prev, or next is clicked. Required." },
+          { name: "onPageSizeChange", type: "(pageSize: number) => void", description: "If provided, shows a page-size Select." },
+          { name: "pageSizeOptions", type: "number[]", default: "[10, 15, 25, 50, 100]", description: "Choices in the page-size Select." },
+          { name: "siblingCount", type: "number", default: "1", description: "Page numbers shown on each side of the current page before collapsing into \"...\"." },
+        ]}
+      >
+        <CatalogExample>
+          <Pagination
+            page={paginationPage}
+            pageSize={paginationPageSize}
+            total={132}
+            onPageChange={setPaginationPage}
+            onPageSizeChange={setPaginationPageSize}
+          />
         </CatalogExample>
       </CatalogSection>
 

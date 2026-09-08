@@ -16,7 +16,7 @@ export function NavigationSections() {
       <CatalogSection
         id="tabs"
         title="Tabs"
-        description="Value-based, so panels stay matched even if tabs are reordered."
+        description={'Value-based, so panels stay matched even if tabs are reordered. variant="pill" renders a sliding segmented-control-style indicator instead of an underline.'}
         usage={`import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@ktyudhadmc/fragment";
 
 <Tabs defaultValue="profile" onChange={setActive}>
@@ -28,15 +28,24 @@ export function NavigationSections() {
     <TabPanel value="profile">Profile settings content.</TabPanel>
     <TabPanel value="billing">Billing settings content.</TabPanel>
   </TabPanels>
+</Tabs>
+
+// pill variant
+<Tabs defaultValue="monthly" variant="pill">
+  <TabList>
+    <Tab value="monthly">Monthly</Tab>
+    <Tab value="annually">Annually</Tab>
+  </TabList>
 </Tabs>`}
         props={[
           { name: "value / defaultValue", type: "string", description: "Active tab's value; use value for controlled mode." },
           { name: "onChange", type: "(value: string) => void", description: "Called when the active tab changes." },
+          { name: "variant", type: '"underline" | "pill"', default: '"underline"', description: "Visual style of the tab list." },
           { name: "Tab.value", type: "string", description: "Must match a TabPanel's value. Required." },
           { name: "Tab.disabled", type: "boolean", default: "false", description: "Prevents selecting this tab." },
         ]}
       >
-        <CatalogExample>
+        <CatalogExample label="Underline">
           <Tabs defaultValue="profile">
             <TabList>
               <Tab value="profile">Profile</Tab>
@@ -46,6 +55,14 @@ export function NavigationSections() {
               <TabPanel value="profile">Profile settings content.</TabPanel>
               <TabPanel value="billing">Billing settings content.</TabPanel>
             </TabPanels>
+          </Tabs>
+        </CatalogExample>
+        <CatalogExample label="Pill">
+          <Tabs defaultValue="monthly" variant="pill">
+            <TabList>
+              <Tab value="monthly">Monthly</Tab>
+              <Tab value="annually">Annually</Tab>
+            </TabList>
           </Tabs>
         </CatalogExample>
       </CatalogSection>

@@ -20,16 +20,15 @@ describe("Select", () => {
     const onChange = vi.fn();
     render(<Select options={options} onChange={onChange} />);
 
-    await user.click(screen.getByRole("button"));
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox"));
+    expect(screen.getByText("Banana")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("option", { name: "Banana" }));
+    await user.click(screen.getByText("Banana"));
 
     expect(onChange).toHaveBeenCalledWith("banana");
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
-  it("shows the selected label in the trigger", () => {
+  it("shows the selected label in the control", () => {
     render(<Select options={options} value="apple" />);
     expect(screen.getByText("Apple")).toBeInTheDocument();
   });
@@ -39,8 +38,8 @@ describe("Select", () => {
     const onChange = vi.fn();
     render(<Select options={options} onChange={onChange} />);
 
-    await user.click(screen.getByRole("button"));
-    await user.click(screen.getByRole("option", { name: "Cherry" }));
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByText("Cherry"));
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -50,11 +49,10 @@ describe("Select", () => {
     const onChange = vi.fn();
     render(<Select multiple options={options} value={[]} onChange={onChange} />);
 
-    await user.click(screen.getByRole("button"));
-    await user.click(screen.getByRole("option", { name: "Apple" }));
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByText("Apple"));
 
     expect(onChange).toHaveBeenCalledWith(["apple"]);
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
   });
 
   it("clears the value via the clear button", async () => {
@@ -67,5 +65,24 @@ describe("Select", () => {
     await user.click(screen.getByRole("button", { name: "Clear selection" }));
 
     expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it("calls onInputChange while typing, for async/server-side search", async () => {
+    const user = userEvent.setup();
+    const onInputChange = vi.fn();
+    render(<Select options={options} onInputChange={onInputChange} />);
+
+    await user.type(screen.getByRole("combobox"), "ban");
+
+    expect(onInputChange).toHaveBeenCalledWith("ban");
+  });
+
+  it("shows a custom no-options message", async () => {
+    const user = userEvent.setup();
+    render(<Select options={[]} noOptionsMessage="Nothing here" />);
+
+    await user.click(screen.getByRole("combobox"));
+
+    expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
 });

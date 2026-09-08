@@ -1,16 +1,15 @@
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from "react";
-import { css, cx } from "../../../styled-system/css";
-import { selectField } from "../../../styled-system/recipes";
-import { IconButton } from "../IconButton";
-import { ChevronDownIcon, CloseIcon } from "../icons";
+import { useId, useMemo } from "react";
+import ReactSelect, {
+  components,
+  type ClearIndicatorProps,
+  type DropdownIndicatorProps,
+  type MultiValue,
+  type SingleValue,
+  type StylesConfig,
+} from "react-select";
+import { token } from "../../../styled-system/tokens";
 import { useFormControlContext } from "../FormControl/context";
+import { ChevronDownIcon, CloseIcon } from "../icons";
 
 export interface SelectOption {
   label: string;
@@ -20,6 +19,9 @@ export interface SelectOption {
 
 type Size = "sm" | "md" | "lg";
 
+const SIZE_HEIGHT: Record<Size, number> = { sm: 32, md: 36, lg: 44 };
+const SIZE_FONT: Record<Size, string> = { sm: "12px", md: "14px", lg: "16px" };
+
 interface BaseProps {
   options: SelectOption[];
   placeholder?: string;
@@ -27,6 +29,16 @@ interface BaseProps {
   disabled?: boolean;
   invalid?: boolean;
   isClearable?: boolean;
+  /** Enables the text filter box; set false for a plain closed-list dropdown. */
+  isSearchable?: boolean;
+  /** Shows react-select's built-in loading spinner and swaps the "no options" message. */
+  isLoading?: boolean;
+  /** Fires on every keystroke in the filter box — wire this to a debounced/server-side search. */
+  onInputChange?: (value: string) => void;
+  /** Fires when the menu list is scrolled to the bottom — wire this to load the next page. */
+  onMenuScrollToBottom?: () => void;
+  noOptionsMessage?: string;
+  loadingMessage?: string;
   id?: string;
   name?: string;
   className?: string;
@@ -47,12 +59,119 @@ interface MultiSelectProps extends BaseProps {
 
 export type SelectProps = SingleSelectProps | MultiSelectProps;
 
-function isSelected(props: SelectProps, value: string): boolean {
-  return props.multiple
-    ? (props.value ?? []).includes(value)
-    : props.value === value;
+function toResolvedValue(props: SelectProps): SelectOption | SelectOption[] | null {
+  if (props.multiple) {
+    const selected = props.value ?? [];
+    return props.options.filter((option) => selected.includes(option.value));
+  }
+  return props.options.find((option) => option.value === props.value) ?? null;
 }
 
+function buildStyles(size: Size, invalid: boolean): StylesConfig<SelectOption, boolean> {
+  const height = SIZE_HEIGHT[size];
+
+  return {
+    control: (base, state) => ({
+      ...base,
+      minHeight: height,
+      fontSize: SIZE_FONT[size],
+      borderRadius: token("radii.md"),
+      borderColor: invalid
+        ? token("colors.red.500")
+        : state.isFocused
+          ? token("colors.blue.400")
+          : token("colors.gray.300"),
+      boxShadow: state.isFocused
+        ? `0 0 0 3px ${invalid ? token("colors.red.100") : token("colors.blue.100")}`
+        : "none",
+      backgroundColor: state.isDisabled ? token("colors.gray.100") : token("colors.white"),
+      cursor: state.isDisabled ? "not-allowed" : "pointer",
+      "&:hover": {
+        borderColor: state.isDisabled
+          ? token("colors.gray.300")
+          : invalid
+            ? token("colors.red.500")
+            : token("colors.blue.400"),
+      },
+    }),
+    valueContainer: (base) => ({ ...base, padding: "0 0.875rem" }),
+    input: (base) => ({ ...base, margin: 0, padding: 0, color: token("colors.gray.800") }),
+    placeholder: (base) => ({ ...base, color: token("colors.gray.400") }),
+    singleValue: (base, state) => ({
+      ...base,
+      color: state.isDisabled ? token("colors.gray.400") : token("colors.gray.800"),
+    }),
+    indicatorSeparator: () => ({ display: "none" }),
+    indicatorsContainer: (base) => ({ ...base, height }),
+    dropdownIndicator: (base) => ({ ...base, color: token("colors.gray.500"), padding: "0 0.5rem" }),
+    clearIndicator: (base) => ({ ...base, color: token("colors.gray.400"), padding: "0 0.25rem" }),
+    multiValue: (base) => ({
+      ...base,
+      backgroundColor: token("colors.gray.100"),
+      borderRadius: token("radii.sm"),
+    }),
+    multiValueLabel: (base) => ({ ...base, color: token("colors.gray.700"), fontSize: SIZE_FONT[size] }),
+    multiValueRemove: (base) => ({
+      ...base,
+      color: token("colors.gray.500"),
+      ":hover": { backgroundColor: token("colors.gray.200"), color: token("colors.gray.700") },
+    }),
+    menu: (base) => ({
+      ...base,
+      zIndex: 50,
+      borderRadius: token("radii.lg"),
+      boxShadow: token("shadows.md"),
+      border: `1px solid ${token("colors.gray.200")}`,
+      overflow: "hidden",
+    }),
+    menuList: (base) => ({ ...base, padding: "0.25rem" }),
+    option: (base, state) => ({
+      ...base,
+      borderRadius: token("radii.md"),
+      fontSize: SIZE_FONT[size],
+      cursor: state.isDisabled ? "not-allowed" : "pointer",
+      color: state.isSelected ? token("colors.white") : token("colors.gray.800"),
+      backgroundColor: state.isSelected
+        ? token("colors.blue.500")
+        : state.isFocused
+          ? token("colors.gray.100")
+          : "transparent",
+      ":active": {
+        backgroundColor: state.isSelected ? token("colors.blue.500") : token("colors.gray.100"),
+      },
+    }),
+    noOptionsMessage: (base) => ({ ...base, color: token("colors.gray.400"), fontSize: SIZE_FONT[size] }),
+    loadingMessage: (base) => ({ ...base, color: token("colors.gray.400"), fontSize: SIZE_FONT[size] }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+  };
+}
+
+function ClearIndicator({ innerProps }: ClearIndicatorProps<SelectOption, boolean>) {
+  // Deliberately skip react-select's default ClearIndicator wrapper — it
+  // forces aria-hidden="true" on its container, which would hide our
+  // accessible name from the tree no matter what we render inside it.
+  return (
+    <div
+      {...innerProps}
+      role="button"
+      aria-label="Clear selection"
+      aria-hidden={undefined}
+      style={{ display: "flex", alignItems: "center", padding: "0 0.25rem", cursor: "pointer" }}
+    >
+      <CloseIcon width={14} height={14} />
+    </div>
+  );
+}
+
+function DropdownIndicator(props: DropdownIndicatorProps<SelectOption, boolean>) {
+  return (
+    <components.DropdownIndicator {...props}>
+      <ChevronDownIcon width={14} height={14} />
+    </components.DropdownIndicator>
+  );
+}
+
+/** A single/multi select built on react-select, so async search, infinite scroll and loading states come for free instead of being hand-rolled. */
 export function Select(props: SelectProps) {
   const ctx = useFormControlContext();
   const {
@@ -62,168 +181,58 @@ export function Select(props: SelectProps) {
     disabled = ctx?.disabled ?? false,
     invalid = ctx?.invalid ?? false,
     isClearable = false,
+    isSearchable = true,
+    isLoading = false,
+    onInputChange,
+    onMenuScrollToBottom,
+    noOptionsMessage = "No options",
+    loadingMessage = "Loading...",
     id,
     name,
     className,
+    multiple,
+    ...rest
   } = props;
 
   const generatedId = useId();
-  const triggerId = id ?? ctx?.id ?? generatedId;
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const inputId = id ?? ctx?.id ?? generatedId;
 
-  const selectedOptions = useMemo(
-    () => options.filter((option) => isSelected(props, option.value)),
-    [options, props]
-  );
-
-  useEffect(() => {
-    if (!open) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  const commitSelect = (option: SelectOption) => {
-    if (option.disabled) return;
-
-    if (props.multiple) {
-      const current = props.value ?? [];
-      const next = current.includes(option.value)
-        ? current.filter((v) => v !== option.value)
-        : [...current, option.value];
-      props.onChange?.(next);
-      return;
-    }
-
-    props.onChange?.(option.value);
-    setOpen(false);
-  };
-
-  const handleClear = () => {
-    if (props.multiple) props.onChange?.([]);
-    else props.onChange?.(null);
-  };
-
-  const handleTriggerKeyDown = (event: ReactKeyboardEvent) => {
-    if (disabled) return;
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setOpen(true);
-      setActiveIndex((i) => Math.min(i + 1, options.length - 1));
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setOpen(true);
-      setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      if (!open) {
-        setOpen(true);
-      } else if (activeIndex >= 0) {
-        commitSelect(options[activeIndex]);
-      }
-    } else if (event.key === "Escape") {
-      setOpen(false);
-    }
-  };
-
-  const styles = selectField({ size, invalid });
-  const hasValue = selectedOptions.length > 0;
-
-  const displayLabel = props.multiple
-    ? selectedOptions.map((o) => o.label).join(", ")
-    : selectedOptions[0]?.label;
+  const resolvedValue = useMemo(() => toResolvedValue(props), [props]);
+  const styles = useMemo(() => buildStyles(size, invalid), [size, invalid]);
 
   return (
-    <div ref={containerRef} className={cx(styles.root, className)}>
-      <button
-        type="button"
-        id={triggerId}
-        name={name}
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className={styles.trigger}
-        onClick={() => !disabled && setOpen((v) => !v)}
-        onKeyDown={handleTriggerKeyDown}
-      >
-        {hasValue ? (
-          <span className={styles.valueText}>{displayLabel}</span>
-        ) : (
-          <span className={styles.placeholder}>{placeholder}</span>
-        )}
-
-        <span
-          className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "1",
-            flexShrink: 0,
-          })}
-        >
-          {isClearable && hasValue && !disabled && (
-            <IconButton
-              aria-label="Clear selection"
-              icon={<CloseIcon />}
-              size="xs"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleClear();
-              }}
-            />
-          )}
-          <ChevronDownIcon
-            className={css({ color: "gray.500" })}
-            style={{
-              transform: open ? "rotate(180deg)" : undefined,
-              transition: "transform 0.15s",
-            }}
-          />
-        </span>
-      </button>
-
-      {open && !disabled && (
-        <ul role="listbox" aria-multiselectable={props.multiple} className={styles.menu}>
-          {options.length === 0 && <li className={styles.empty}>No options</li>}
-          {options.map((option, index) => {
-            const selected = isSelected(props, option.value);
-            const optionStyles = selectField({
-              active: selected,
-              focused: index === activeIndex,
-            });
-
-            return (
-              <li
-                key={option.value}
-                role="option"
-                aria-selected={selected}
-                aria-disabled={option.disabled}
-                className={optionStyles.option}
-                onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => commitSelect(option)}
-              >
-                <span className={optionStyles.optionLabel}>{option.label}</span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+    <ReactSelect<SelectOption, boolean>
+      inputId={inputId}
+      name={name}
+      className={className}
+      classNamePrefix="fragment-select"
+      aria-label={rest["aria-label"]}
+      placeholder={placeholder}
+      options={options}
+      isOptionDisabled={(option) => Boolean(option.disabled)}
+      isMulti={multiple}
+      isDisabled={disabled}
+      isClearable={isClearable}
+      isSearchable={isSearchable}
+      isLoading={isLoading}
+      components={{ ClearIndicator, DropdownIndicator }}
+      value={resolvedValue}
+      onChange={(next) => {
+        if (multiple) {
+          (props as MultiSelectProps).onChange?.(
+            ((next as MultiValue<SelectOption>) ?? []).map((option) => option.value)
+          );
+        } else {
+          (props as SingleSelectProps).onChange?.((next as SingleValue<SelectOption>)?.value ?? null);
+        }
+      }}
+      onInputChange={onInputChange ? (input) => onInputChange(input) : undefined}
+      onMenuScrollToBottom={onMenuScrollToBottom}
+      noOptionsMessage={() => noOptionsMessage}
+      loadingMessage={() => loadingMessage}
+      menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
+      styles={styles}
+    />
   );
 }
 

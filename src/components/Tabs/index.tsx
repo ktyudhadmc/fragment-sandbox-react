@@ -1,17 +1,29 @@
-import { useState, type ReactNode } from "react";
-import { cx } from "../../../styled-system/css";
-import { tabs } from "../../../styled-system/recipes";
-import { TabsContext, useTabsContext } from "./context";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { css, cx } from "../../../styled-system/css";
+import { tabs, segmentedControl } from "../../../styled-system/recipes";
+import { TabsContext, useTabsContext, type TabsOrientation, type TabsVariant } from "./context";
 
 export interface TabsProps {
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
+  /** "underline" (default) draws a bottom border on the active tab; "pill" shows a sliding segmented-control-style indicator. */
+  variant?: TabsVariant;
+  /** "vertical" stacks the tab list on the left with a right-side border/indicator instead of a bottom one. */
+  orientation?: TabsOrientation;
   children: ReactNode;
   className?: string;
 }
 
-export function Tabs({ value, defaultValue, onChange, children, className }: TabsProps) {
+export function Tabs({
+  value,
+  defaultValue,
+  onChange,
+  variant = "underline",
+  orientation = "horizontal",
+  children,
+  className,
+}: TabsProps) {
   const [internal, setInternal] = useState(defaultValue ?? "");
   const current = value ?? internal;
 
@@ -21,8 +33,15 @@ export function Tabs({ value, defaultValue, onChange, children, className }: Tab
   };
 
   return (
-    <TabsContext.Provider value={{ value: current, setValue }}>
-      <div className={className}>{children}</div>
+    <TabsContext.Provider value={{ value: current, setValue, variant, orientation }}>
+      <div
+        className={cx(
+          orientation === "vertical" && css({ display: "flex", gap: "6" }),
+          className
+        )}
+      >
+        {children}
+      </div>
     </TabsContext.Provider>
   );
 }
@@ -30,7 +49,41 @@ export function Tabs({ value, defaultValue, onChange, children, className }: Tab
 Tabs.displayName = "Tabs";
 
 export function TabList({ children, className }: { children: ReactNode; className?: string }) {
-  const styles = tabs();
+  const ctx = useTabsContext();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [sliderStyle, setSliderStyle] = useState({ width: 0, left: 0 });
+
+  useLayoutEffect(() => {
+    if (ctx.variant !== "pill") return;
+    const active = containerRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (active) {
+      setSliderStyle({ width: active.offsetWidth, left: active.offsetLeft });
+    }
+  }, [ctx.variant, ctx.value, children]);
+
+  if (ctx.variant === "pill") {
+    const styles = segmentedControl();
+    return (
+      <div ref={containerRef} role="tablist" className={cx(styles.root, css({ position: "relative" }), className)}>
+        <span
+          aria-hidden
+          className={css({
+            position: "absolute",
+            top: "1",
+            bottom: "1",
+            rounded: "md",
+            bg: "white",
+            boxShadow: "sm",
+            transition: "left 0.2s, width 0.2s",
+          })}
+          style={{ width: sliderStyle.width, left: sliderStyle.left }}
+        />
+        {children}
+      </div>
+    );
+  }
+
+  const styles = tabs({ orientation: ctx.orientation });
   return (
     <div role="tablist" className={cx(styles.list, className)}>
       {children}
@@ -50,7 +103,11 @@ export interface TabProps {
 export function Tab({ value, children, disabled = false, className }: TabProps) {
   const ctx = useTabsContext();
   const selected = ctx.value === value;
-  const styles = tabs({ selected });
+
+  const styles =
+    ctx.variant === "pill"
+      ? segmentedControl({ selected }).option
+      : tabs({ selected, orientation: ctx.orientation }).tab;
 
   return (
     <button
@@ -58,7 +115,11 @@ export function Tab({ value, children, disabled = false, className }: TabProps) 
       role="tab"
       aria-selected={selected}
       disabled={disabled}
-      className={cx(styles.tab, className)}
+      className={cx(
+        styles,
+        ctx.variant === "pill" && css({ position: "relative", zIndex: 1, bg: "transparent" }),
+        className
+      )}
       onClick={() => !disabled && ctx.setValue(value)}
     >
       {children}

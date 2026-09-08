@@ -31,6 +31,10 @@ export function FormsSections() {
   const [autoValue, setAutoValue] = useState<string | undefined>();
   const [tags, setTags] = useState<string[]>(["design-system", "react"]);
   const [date, setDate] = useState<Date | null>(new Date());
+  const [month, setMonth] = useState<Date | null>(new Date());
+  const [time, setTime] = useState<Date | null>(new Date(2026, 0, 1, 14, 30));
+  const [time12, setTime12] = useState<Date | null>(new Date(2026, 0, 1, 14, 30));
+  const [dateTime, setDateTime] = useState<Date | null>(new Date());
   const [slider, setSlider] = useState(40);
   const [rating, setRating] = useState(3);
   const [color, setColor] = useState("#1C44D5");
@@ -188,7 +192,7 @@ export function FormsSections() {
       <CatalogSection
         id="select"
         title="Select"
-        description="Single and multi selection dropdown (custom-built, not a native <select>)."
+        description="Built on react-select instead of a hand-rolled dropdown — async search, infinite scroll and loading states come from the library instead of being reimplemented (and re-debugged) here."
         usage={`import { Select } from "@ktyudhadmc/fragment";
 
 <Select
@@ -199,16 +203,29 @@ export function FormsSections() {
 />
 
 // multiple selection
-<Select multiple options={options} value={values} onChange={setValues} />`}
+<Select multiple options={options} value={values} onChange={setValues} />
+
+// async/server-side search + infinite scroll
+<Select
+  options={options}
+  isLoading={isFetching}
+  onInputChange={(query) => debouncedSearch(query)}
+  onMenuScrollToBottom={() => fetchNextPage()}
+/>`}
         props={[
           { name: "options", type: "{ label: string; value: string; disabled?: boolean }[]", description: "The list of selectable options. Required." },
           { name: "multiple", type: "boolean", default: "false", description: "Switches value/onChange to work with string[] instead of string | null." },
           { name: "value", type: "string | null (single) / string[] (multiple)", description: "Selected value(s)." },
           { name: "onChange", type: "(value) => void", description: "Called with the new value on selection." },
           { name: "placeholder", type: "string", default: '"Select an option"', description: "Shown when nothing is selected." },
-          { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Trigger height." },
+          { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Control height." },
           { name: "isClearable", type: "boolean", default: "false", description: "Shows a clear (×) button once a value is selected." },
-          { name: "disabled", type: "boolean", default: "false", description: "Disables the trigger." },
+          { name: "isSearchable", type: "boolean", default: "true", description: "Shows the text filter box; set false for a plain closed-list dropdown." },
+          { name: "isLoading", type: "boolean", default: "false", description: "Shows react-select's built-in spinner and swaps in loadingMessage." },
+          { name: "onInputChange", type: "(query: string) => void", description: "Fires on every keystroke in the filter box — wire this to a debounced/server-side search." },
+          { name: "onMenuScrollToBottom", type: "() => void", description: "Fires when the menu list is scrolled to the bottom — wire this to load the next page." },
+          { name: "noOptionsMessage / loadingMessage", type: "string", default: '"No options" / "Loading..."', description: "Text shown in the menu for each state." },
+          { name: "disabled", type: "boolean", default: "false", description: "Disables the control." },
           { name: "invalid", type: "boolean", default: "false", description: "Shows the error border color." },
         ]}
       >
@@ -273,21 +290,32 @@ export function FormsSections() {
       <CatalogSection
         id="date-picker"
         title="Date Picker"
-        description="Custom-built calendar popover (no external date library)."
+        description="Custom-built popover (no external date library). Supports date, month, time and datetime modes, plus a date range mode."
         usage={`import { DatePicker } from "@ktyudhadmc/fragment";
 
 <DatePicker label="Birthday" value={date} onChange={setDate} isClearable />
 
-// range mode
-<DatePicker isRange label="Stay" value={[start, end]} onChange={setRange} />`}
+// range mode (mode="date" only)
+<DatePicker isRange label="Stay" value={[start, end]} onChange={setRange} />
+
+// month picker
+<DatePicker mode="month" label="Billing period" value={month} onChange={setMonth} />
+
+// time picker (24h or 12h)
+<DatePicker mode="time" label="Start time" value={time} onChange={setTime} use12h />
+
+// combined date + time
+<DatePicker mode="datetime" label="Appointment" value={value} onChange={setValue} />`}
         props={[
+          { name: "mode", type: '"date" | "month" | "time" | "datetime"', default: '"date"', description: "Which picker UI to show. isRange is only meaningful for mode=\"date\"." },
           { name: "value", type: "Date | null (single) / [Date | null, Date | null] (isRange)", description: "Selected date(s)." },
           { name: "onChange", type: "(value) => void", description: "Called with the new date/range." },
-          { name: "isRange", type: "boolean", default: "false", description: "Switches to range-selection mode." },
+          { name: "isRange", type: "boolean", default: "false", description: "Switches mode=\"date\" to range-selection." },
+          { name: "use12h", type: "boolean", default: "false", description: "For mode=\"time\" | \"datetime\" — shows an AM/PM select instead of 24h hours." },
           { name: "label", type: "string", description: "Field label shown above the input." },
           { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Input height." },
           { name: "isClearable", type: "boolean", default: "true", description: "Shows a clear button once a date is set." },
-          { name: "minDate / maxDate", type: "Date", description: "Bounds selectable dates." },
+          { name: "minDate / maxDate", type: "Date", description: "Bounds selectable dates (mode=\"date\" | \"month\" | \"datetime\")." },
           { name: "disabledDate", type: "(date: Date) => boolean", description: "Return true to disable a specific date." },
           { name: "disabled / invalid / errorMessage", type: "boolean / boolean / string", description: "Standard field states." },
         ]}
@@ -297,6 +325,18 @@ export function FormsSections() {
         </CatalogExample>
         <CatalogExample label="Range">
           <DatePicker isRange value={[null, null]} onChange={() => {}} />
+        </CatalogExample>
+        <CatalogExample label="Month">
+          <DatePicker mode="month" value={month} onChange={setMonth} />
+        </CatalogExample>
+        <CatalogExample label="Time (24h)">
+          <DatePicker mode="time" value={time} onChange={setTime} />
+        </CatalogExample>
+        <CatalogExample label="Time (12h)">
+          <DatePicker mode="time" use12h value={time12} onChange={setTime12} />
+        </CatalogExample>
+        <CatalogExample label="Datetime">
+          <DatePicker mode="datetime" value={dateTime} onChange={setDateTime} />
         </CatalogExample>
       </CatalogSection>
 

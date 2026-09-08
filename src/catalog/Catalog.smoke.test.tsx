@@ -10,7 +10,7 @@ describe("Catalog", () => {
   it("renders without crashing and shows every nav section", () => {
     render(<Catalog />);
 
-    expect(screen.getByText("Fragment")).toBeInTheDocument();
+    expect(screen.getAllByText("Fragment").length).toBeGreaterThan(0);
     expect(screen.getByText("Component catalog")).toBeInTheDocument();
 
     // One heading per documented component/group, sanity-checking a few spread across categories.
@@ -19,5 +19,7 @@ describe("Catalog", () => {
     expect(screen.getAllByText("Modal").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Chart").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Carousel").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Pagination").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("usePrint").length).toBeGreaterThan(0);
   });
 });

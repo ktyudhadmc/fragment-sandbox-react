@@ -7,6 +7,7 @@ import { FeedbackSections } from "./sections/Feedback";
 import { OverlaySections } from "./sections/Overlay";
 import { NavigationSections } from "./sections/Navigation";
 import { DataDisplaySections } from "./sections/DataDisplay";
+import { UtilitiesSections } from "./sections/Utilities";
 
 const NAV_GROUPS = [
   {
@@ -76,8 +77,27 @@ const NAV_GROUPS = [
       { id: "tag", label: "Tag" },
       { id: "text", label: "Text & Divider" },
       { id: "table", label: "Table" },
+      { id: "pagination", label: "Pagination" },
       { id: "chart", label: "Chart" },
       { id: "scroll-area", label: "Scroll Area" },
+    ],
+  },
+  {
+    label: "Layout & utilities",
+    items: [
+      { id: "layout", label: "Layout (AppShell)" },
+      { id: "use-print", label: "usePrint" },
+      { id: "use-export-xlsx", label: "useExportXlsx" },
+      { id: "use-modal", label: "useModal / useDrawer / useDropdown" },
+      { id: "use-media-query", label: "useMediaQuery" },
+      { id: "use-countdown", label: "useCountdown" },
+      { id: "use-debounced-callback", label: "useDebouncedCallback" },
+      { id: "use-bulk-select", label: "useBulkSelect" },
+      { id: "use-pagination-hook", label: "usePagination (hook)" },
+      { id: "use-infinite-handler", label: "useInfiniteHandler" },
+      { id: "use-map-input-options", label: "useMapInputOptions" },
+      { id: "use-file-upload", label: "useFileUpload" },
+      { id: "use-url-tab", label: "useUrlTab" },
     ],
   },
 ];
@@ -167,6 +187,7 @@ export function Catalog() {
         <OverlaySections />
         <NavigationSections />
         <DataDisplaySections />
+        <UtilitiesSections />
       </main>
     </div>
   );

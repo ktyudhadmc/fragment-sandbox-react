@@ -79,4 +79,71 @@ describe("DatePicker", () => {
     render(<DatePicker invalid errorMessage="Date is required" />);
     expect(screen.getByText("Date is required")).toBeInTheDocument();
   });
+
+  describe("mode=month", () => {
+    it("shows a month grid and formats the value as YYYY-MM", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<DatePicker mode="month" onChange={onChange} />);
+
+      await user.click(screen.getByPlaceholderText("Select month"));
+      await user.click(screen.getByRole("button", { name: "Mar" }));
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      const picked = onChange.mock.calls[0][0] as Date;
+      expect(picked.getMonth()).toBe(2);
+      expect(picked.getDate()).toBe(1);
+    });
+
+    it("formats an existing value as YYYY-MM", () => {
+      render(<DatePicker mode="month" value={new Date(2026, 2, 1)} onChange={vi.fn()} />);
+      expect(screen.getByPlaceholderText("Select month")).toHaveValue("2026-03");
+    });
+  });
+
+  describe("mode=time", () => {
+    it("formats the value as HH:mm", () => {
+      render(<DatePicker mode="time" value={new Date(2026, 0, 1, 14, 30)} onChange={vi.fn()} />);
+      expect(screen.getByPlaceholderText("Select time")).toHaveValue("14:30");
+    });
+
+    it("updates the hour via the time selects", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<DatePicker mode="time" value={new Date(2026, 0, 1, 9, 0)} onChange={onChange} />);
+
+      await user.click(screen.getByPlaceholderText("Select time"));
+      await user.selectOptions(screen.getByRole("combobox", { name: "Hour" }), "14");
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect((onChange.mock.calls[0][0] as Date).getHours()).toBe(14);
+    });
+  });
+
+  describe("mode=datetime", () => {
+    it("formats the value as YYYY-MM-DD HH:mm", () => {
+      render(
+        <DatePicker
+          mode="datetime"
+          value={new Date(2026, 1, 15, 8, 5)}
+          onChange={vi.fn()}
+        />
+      );
+      expect(screen.getByPlaceholderText("Select date & time")).toHaveValue(
+        "2026-02-15 08:05"
+      );
+    });
+
+    it("keeps the panel open after picking a day so time can still be set", async () => {
+      const user = userEvent.setup();
+      render(
+        <DatePicker mode="datetime" value={new Date(2026, 1, 10, 9, 0)} onChange={vi.fn()} />
+      );
+
+      await user.click(screen.getByPlaceholderText("Select date & time"));
+      await user.click(screen.getByRole("button", { name: "2026-02-15" }));
+
+      expect(screen.getByRole("combobox", { name: "Hour" })).toBeInTheDocument();
+    });
+  });
 });

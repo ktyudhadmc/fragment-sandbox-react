@@ -7,12 +7,20 @@ import {
 } from "react";
 import { css, cx } from "../../../styled-system/css";
 import { Calendar, type DateRange } from "../Calendar";
+import { MonthGrid } from "../Calendar/MonthGrid";
+import { Button } from "../Button";
 import { IconButton } from "../IconButton";
 import { Input } from "../Input";
 import { CalendarIcon, CloseIcon } from "../icons";
-import { formatISODate } from "../Calendar/utils";
+import {
+  formatISODate,
+  formatMonthValue,
+  formatTimeValue,
+} from "../Calendar/utils";
+import { TimeSelect } from "./TimeSelect";
 
 type Size = "sm" | "md" | "lg";
+export type DatePickerMode = "date" | "month" | "time" | "datetime";
 
 interface BaseProps {
   label?: string;
@@ -28,6 +36,15 @@ interface BaseProps {
   maxDate?: Date;
   disabledDate?: (date: Date) => boolean;
   className?: string;
+  /**
+   * "date" (default) — day picker, supports isRange.
+   * "month" — month + year picker.
+   * "time" — hour/minute picker.
+   * "datetime" — day picker combined with a time picker.
+   */
+  mode?: DatePickerMode;
+  /** Only relevant for mode="time" | "datetime". */
+  use12h?: boolean;
 }
 
 interface SingleDatePickerProps extends BaseProps {
@@ -44,26 +61,45 @@ interface RangeDatePickerProps extends BaseProps {
 
 export type DatePickerProps = SingleDatePickerProps | RangeDatePickerProps;
 
-function formatValue(props: DatePickerProps): string {
+function formatValue(props: DatePickerProps, mode: DatePickerMode, use12h: boolean): string {
   if (props.isRange) {
     const [start, end] = props.value ?? [null, null];
     if (!start) return "";
     if (!end) return formatISODate(start);
     return `${formatISODate(start)} – ${formatISODate(end)}`;
   }
-  return props.value ? formatISODate(props.value) : "";
+
+  if (!props.value) return "";
+
+  switch (mode) {
+    case "month":
+      return formatMonthValue(props.value);
+    case "time":
+      return formatTimeValue(props.value, use12h);
+    case "datetime":
+      return `${formatISODate(props.value)} ${formatTimeValue(props.value, use12h)}`;
+    default:
+      return formatISODate(props.value);
+  }
 }
 
 function hasValue(props: DatePickerProps): boolean {
   return props.isRange ? Boolean(props.value?.[0]) : Boolean(props.value);
 }
 
+const DEFAULT_PLACEHOLDER: Record<DatePickerMode, string> = {
+  date: "Select date",
+  month: "Select month",
+  time: "Select time",
+  datetime: "Select date & time",
+};
+
 export function DatePicker(props: DatePickerProps) {
   const {
     label,
     id,
     name,
-    placeholder = "Select date",
+    placeholder,
     size = "md",
     disabled = false,
     invalid = false,
@@ -73,6 +109,8 @@ export function DatePicker(props: DatePickerProps) {
     maxDate,
     disabledDate,
     className,
+    mode = "date",
+    use12h = false,
   } = props;
 
   const generatedId = useId();
@@ -115,6 +153,108 @@ export function DatePicker(props: DatePickerProps) {
     }
   };
 
+  const renderPanel = () => {
+    if (props.isRange) {
+      return (
+        <Calendar
+          isRange
+          value={props.value}
+          onChange={props.onChange}
+          minDate={minDate}
+          maxDate={maxDate}
+          disabledDate={disabledDate}
+        />
+      );
+    }
+
+    if (mode === "month") {
+      return (
+        <MonthGrid
+          value={props.value}
+          minDate={minDate}
+          maxDate={maxDate}
+          onChange={(date) => {
+            props.onChange?.(date);
+            setOpen(false);
+          }}
+        />
+      );
+    }
+
+    if (mode === "time") {
+      return (
+        <div
+          className={css({
+            display: "flex",
+            flexDirection: "column",
+            gap: "3",
+            p: "3",
+            bg: "white",
+            rounded: "lg",
+            borderWidth: "1px",
+            borderColor: "gray.200",
+            boxShadow: "md",
+          })}
+        >
+          <TimeSelect value={props.value ?? new Date()} onChange={props.onChange as (d: Date) => void} use12h={use12h} />
+          <Button size="xs" onClick={() => setOpen(false)}>
+            Done
+          </Button>
+        </div>
+      );
+    }
+
+    if (mode === "datetime") {
+      return (
+        <div className={css({ display: "flex", flexDirection: "column", gap: "2" })}>
+          <Calendar
+            value={props.value}
+            onChange={(date) => {
+              const base = props.value ?? new Date();
+              date.setHours(base.getHours(), base.getMinutes(), 0, 0);
+              props.onChange?.(date);
+            }}
+            minDate={minDate}
+            maxDate={maxDate}
+            disabledDate={disabledDate}
+          />
+          <div
+            className={css({
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "2",
+              p: "3",
+              bg: "white",
+              rounded: "lg",
+              borderWidth: "1px",
+              borderColor: "gray.200",
+              boxShadow: "md",
+            })}
+          >
+            <TimeSelect value={props.value ?? new Date()} onChange={props.onChange as (d: Date) => void} use12h={use12h} />
+            <Button size="xs" onClick={() => setOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <Calendar
+        value={props.value}
+        onChange={(date) => {
+          props.onChange?.(date);
+          setOpen(false);
+        }}
+        minDate={minDate}
+        maxDate={maxDate}
+        disabledDate={disabledDate}
+      />
+    );
+  };
+
   return (
     <div
       ref={containerRef}
@@ -143,8 +283,8 @@ export function DatePicker(props: DatePickerProps) {
           invalid={invalid}
           disabled={disabled}
           readOnly
-          value={formatValue(props)}
-          placeholder={placeholder}
+          value={formatValue(props, mode, use12h)}
+          placeholder={placeholder ?? DEFAULT_PLACEHOLDER[mode]}
           onClick={() => !disabled && setOpen((v) => !v)}
           onKeyDown={handleTriggerKeyDown}
           aria-haspopup="dialog"
@@ -200,27 +340,7 @@ export function DatePicker(props: DatePickerProps) {
             zIndex: 50,
           })}
         >
-          {props.isRange ? (
-            <Calendar
-              isRange
-              value={props.value}
-              onChange={props.onChange}
-              minDate={minDate}
-              maxDate={maxDate}
-              disabledDate={disabledDate}
-            />
-          ) : (
-            <Calendar
-              value={props.value}
-              onChange={(date) => {
-                props.onChange?.(date);
-                setOpen(false);
-              }}
-              minDate={minDate}
-              maxDate={maxDate}
-              disabledDate={disabledDate}
-            />
-          )}
+          {renderPanel()}
         </div>
       )}
     </div>

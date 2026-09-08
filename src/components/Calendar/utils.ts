@@ -78,3 +78,25 @@ export function formatISODate(date: Date): string {
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+
+export function formatMonthValue(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+export function formatTimeValue(date: Date, use12h = false): string {
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  if (!use12h) {
+    return `${String(date.getHours()).padStart(2, "0")}:${minutes}`;
+  }
+  const period = date.getHours() >= 12 ? "PM" : "AM";
+  const hours12 = date.getHours() % 12 || 12;
+  return `${String(hours12).padStart(2, "0")}:${minutes} ${period}`;
+}
+
+export function withTime(date: Date, hours: number, minutes: number): Date {
+  const next = new Date(date);
+  next.setHours(hours, minutes, 0, 0);
+  return next;
+}

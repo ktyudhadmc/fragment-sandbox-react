@@ -1,8 +1,13 @@
 import { createContext, useContext } from "react";
 
+export type TabsVariant = "underline" | "pill";
+export type TabsOrientation = "horizontal" | "vertical";
+
 export interface TabsContextValue {
   value: string;
   setValue: (value: string) => void;
+  variant: TabsVariant;
+  orientation: TabsOrientation;
 }
 
 export const TabsContext = createContext<TabsContextValue | null>(null);

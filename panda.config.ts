@@ -1219,6 +1219,28 @@ export default defineConfig({
                 tab: { color: "blue.600", borderColor: "blue.600" },
               },
             },
+            orientation: {
+              horizontal: {},
+              vertical: {
+                list: {
+                  flexDirection: "column",
+                  borderBottomWidth: "0",
+                  borderRightWidth: "1px",
+                  width: "48",
+                },
+                tab: {
+                  justifyContent: "flex-start",
+                  width: "full",
+                  borderBottomWidth: "0",
+                  borderRightWidth: "2px",
+                  marginBottom: "0",
+                  marginRight: "-1px",
+                },
+              },
+            },
+          },
+          defaultVariants: {
+            orientation: "horizontal",
           },
         },
 
@@ -1519,7 +1541,7 @@ export default defineConfig({
         table: {
           className: "table",
           description: "Table styles",
-          slots: ["container", "root", "headRow", "headCell", "row", "cell"],
+          slots: ["container", "root", "headRow", "headCell", "row", "cell", "checkboxCell"],
           base: {
             container: {
               width: "full",
@@ -1556,6 +1578,11 @@ export default defineConfig({
               py: "3",
               color: "gray.700",
             },
+            checkboxCell: {
+              width: "10",
+              px: "4",
+              py: "3",
+            },
           },
           variants: {
             hoverable: {
@@ -1566,6 +1593,9 @@ export default defineConfig({
             },
             narrow: {
               true: { cell: { py: "1.5" } },
+            },
+            selected: {
+              true: { row: { bg: "blue.50", _hover: { bg: "blue.50" } } },
             },
           },
           defaultVariants: {
