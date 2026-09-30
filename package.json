@@ -1,7 +1,7 @@
 {
   "name": "@ktyudhadmc/fragment",
   "private": false,
-  "version": "0.0.3",
+  "version": "0.0.1",
   "type": "module",
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
