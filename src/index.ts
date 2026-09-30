@@ -49,6 +49,8 @@ export * from "./components/Broadcast";
 export * from "./components/ScrollArea";
 export * from "./components/Pagination";
 export * from "./components/Layout";
+export * from "./components/Sidebar";
+export * from "./components/Navbar";
 export * from "./hooks/useDismiss";
 export * from "./hooks/usePrint";
 export * from "./hooks/useExportXlsx";

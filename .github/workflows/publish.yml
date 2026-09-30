@@ -1,0 +1,45 @@
+name: Publish package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Check tag matches package.json version
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$PKG_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Generate Panda CSS (styled-system is gitignored)
+        run: npx panda codegen
+
+      - run: npm test
+      - run: npm run build
+
+      - name: Publish
+        run: |
+          # 0.0.1-alpha.1 -> dist-tag "alpha"; stable versions stay on "latest"
+          TAG=$(node -p "(require('./package.json').version.split('-')[1] || 'latest').split('.')[0]")
+          npm publish --access public --tag "$TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

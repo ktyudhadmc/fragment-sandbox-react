@@ -6,12 +6,16 @@ export interface SidebarProviderProps {
   defaultExpanded?: boolean;
   /** Below this width (px), the sidebar becomes an off-canvas mobile drawer. */
   mobileBreakpoint?: number;
+  expandedWidth?: number;
+  collapsedWidth?: number;
 }
 
 export function SidebarProvider({
   children,
   defaultExpanded = true,
-  mobileBreakpoint = 768,
+  mobileBreakpoint = 1024,
+  expandedWidth = 240,
+  collapsedWidth = 90,
 }: SidebarProviderProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -30,6 +34,9 @@ export function SidebarProvider({
     isExpanded,
     isMobileOpen,
     isHovered,
+    showExpanded: isExpanded || isHovered || isMobileOpen,
+    expandedWidth,
+    collapsedWidth,
     toggleSidebar: () => setIsExpanded((v) => !v),
     toggleMobileSidebar: () => setIsMobileOpen((v) => !v),
     closeMobileSidebar: () => setIsMobileOpen(false),

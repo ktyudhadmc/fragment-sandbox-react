@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { CatalogExample, CatalogSection } from "../CatalogSection";
-import { AppShell, Sidebar, Topbar } from "../../components/Layout";
+import { Layout } from "../../components/Layout";
+import { Sidebar, type SidebarSection } from "../../components/Sidebar";
+import { Navbar } from "../../components/Navbar";
 import { Button } from "../../components/Button";
 import { Checkbox } from "../../components/Checkbox";
 import { Input } from "../../components/Input";
@@ -20,26 +22,23 @@ const ROWS = [
   { id: 3, name: "Invoice #1003" },
 ];
 
-function DemoSidebarNav() {
-  const linkStyle = css({
-    display: "block",
-    fontSize: "sm",
-    color: "gray.600",
-    px: "3",
-    py: "2",
-    rounded: "md",
-    textDecoration: "none",
-    _hover: { bg: "gray.100" },
-  });
-
-  return (
-    <div className={css({ display: "flex", flexDirection: "column", gap: "1" })}>
-      <a href="#" className={linkStyle}>Dashboard</a>
-      <a href="#" className={linkStyle}>Orders</a>
-      <a href="#" className={linkStyle}>Settings</a>
-    </div>
-  );
-}
+const DEMO_SECTIONS: SidebarSection[] = [
+  {
+    key: "main",
+    title: "Menu",
+    items: [
+      { name: "Dashboard", path: "/dashboard" },
+      {
+        name: "Orders",
+        subItems: [
+          { name: "All orders", path: "/orders" },
+          { name: "Create", path: "/orders/create", badge: "new" },
+        ],
+      },
+    ],
+  },
+  { key: "settings", title: "Setting", items: [{ name: "Settings", path: "/settings" }] },
+];
 
 export function UtilitiesSections() {
   const printRef = useRef<HTMLDivElement>(null);
@@ -56,34 +55,28 @@ export function UtilitiesSections() {
     <>
       <CatalogSection
         id="layout"
-        title="Layout (AppShell / Sidebar / Topbar)"
-        description="Sidebar + Topbar + content shell with a collapsible/mobile-off-canvas sidebar, modeled after hatchery-frontend's SidebarContext pattern."
-        usage={`import { AppShell, Sidebar, Topbar, SidebarProvider, useSidebar } from "@ktyudhadmc/fragment";
+        title="Layout / Sidebar / Navbar"
+        description="Three separate components: Layout (shell + provider), Sidebar (collapsible/mobile drawer with sections and submenus) and Navbar (sticky header with toggle). Modeled after hatchery-frontend's DefaultLayout."
+        usage={`import { Layout, Sidebar, Navbar } from "@ktyudhadmc/fragment";
 
-<AppShell
-  sidebar={
-    <Sidebar logo={<Logo />}>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/orders">Orders</a>
-    </Sidebar>
-  }
-  topbar={<Topbar><UserMenu /></Topbar>}
+<Layout
+  sidebar={<Sidebar logo={<Logo />} collapsedLogo={<Mark />} sections={sections} activePath={pathname} />}
+  navbar={<Navbar logo={<Logo />}><UserMenu /></Navbar>}
 >
   <Page />
-</AppShell>
+</Layout>
 
-// or compose manually with the provider + hook:
-<SidebarProvider defaultExpanded>
-  <MyCustomChrome /> {/* can call useSidebar() anywhere inside */}
-</SidebarProvider>`}
+// Sidebar/Navbar can also be used on their own inside a <SidebarProvider>.
+// Use renderLink to plug in your router's <Link>.`}
         props={[
-          { name: "AppShell.sidebar", type: "ReactElement", description: "Your <Sidebar> element. Required." },
-          { name: "AppShell.topbar", type: "ReactElement", description: "Your <Topbar> element." },
-          { name: "AppShell.sidebarProps", type: "{ defaultExpanded?, mobileBreakpoint? }", description: "Forwarded to the internal SidebarProvider." },
-          { name: "Sidebar.logo / Sidebar.footer", type: "ReactNode", description: "Slots rendered above/below the nav children." },
-          { name: "Sidebar.expandedWidth / collapsedWidth", type: "number (px)", default: "260 / 80", description: "Panel width in each state." },
-          { name: "Topbar.children", type: "ReactNode", description: "Right-aligned content (search, notifications, user menu, ...)." },
-          { name: "useSidebar()", type: "() => SidebarContextValue", description: "Access isExpanded/isMobileOpen/isHovered and their toggle functions from any descendant of SidebarProvider/AppShell." },
+          { name: "Layout.sidebar / navbar", type: "ReactElement", description: "Your <Sidebar> (required) and <Navbar> elements." },
+          { name: "Layout.expandedWidth / collapsedWidth", type: "number (px)", default: "240 / 90", description: "Sidebar width per state; shared with Sidebar via context." },
+          { name: "Layout.defaultExpanded / mobileBreakpoint / maxContentWidth", type: "boolean / number / number", default: "true / 1024 / 1650", description: "Provider options and content max width." },
+          { name: "Sidebar.sections", type: "SidebarSection[]", description: "Titled groups of items; an item has name, icon, path or subItems[{ name, path, badge }]." },
+          { name: "Sidebar.activePath / renderLink", type: "string / (props) => ReactNode", description: "Current location for active state, and a custom link renderer for router integration." },
+          { name: "Sidebar.logo / collapsedLogo / footer / children", type: "ReactNode", description: "Top logo (expanded / collapsed), bottom widget, and extra scroll-area content." },
+          { name: "Navbar.logo / children", type: "ReactNode", description: "Mobile brand and right-aligned actions (collapsed behind a \"...\" button on mobile)." },
+          { name: "useSidebar()", type: "() => SidebarContextValue", description: "Access isExpanded/isMobileOpen/isHovered and toggle functions from any descendant of SidebarProvider/Layout." },
         ]}
       >
         <CatalogExample>
@@ -99,23 +92,21 @@ export function UtilitiesSections() {
               rounded: "lg",
             })}
             // A transform creates a containing block for fixed-position
-            // descendants, so AppShell's fixed Sidebar/Topbar stay inside
+            // descendants, so Layout's fixed Sidebar/Navbar stay inside
             // this preview box instead of pinning to the real viewport.
             style={{ transform: "translate(0)" }}
           >
             <div className={css({ position: "absolute", inset: 0 })}>
-              <AppShell
-                sidebar={
-                  <Sidebar logo={<strong>Fragment</strong>} expandedWidth={200} collapsedWidth={64}>
-                    <DemoSidebarNav />
-                  </Sidebar>
-                }
-                topbar={<Topbar>Welcome back</Topbar>}
+              <Layout
+                expandedWidth={200}
+                collapsedWidth={64}
+                sidebar={<Sidebar logo={<strong>Fragment</strong>} sections={DEMO_SECTIONS} activePath="/orders" />}
+                navbar={<Navbar logo={<strong>Fragment</strong>}>Welcome back</Navbar>}
               >
                 <p className={css({ fontSize: "sm", color: "gray.600" })}>
                   Page content sits here. Click the hamburger icon in the topbar to collapse the sidebar.
                 </p>
-              </AppShell>
+              </Layout>
             </div>
           </div>
         </CatalogExample>

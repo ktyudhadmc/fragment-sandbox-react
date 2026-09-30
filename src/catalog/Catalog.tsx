@@ -85,7 +85,7 @@ const NAV_GROUPS = [
   {
     label: "Layout & utilities",
     items: [
-      { id: "layout", label: "Layout (AppShell)" },
+      { id: "layout", label: "Layout / Sidebar / Navbar" },
       { id: "use-print", label: "usePrint" },
       { id: "use-export-xlsx", label: "useExportXlsx" },
       { id: "use-modal", label: "useModal / useDrawer / useDropdown" },
